@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: using-git-clone-result
+spec:
+  serviceAccountName: build-bot
+  pipelineRef:
+    name: build-and-push-image
+  workspaces:
+  - name: output
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  - name: ssh-directory
+    secret:
+      secretName: ssh-key
+  - name: dockerconfig
+    secret:
+      secretName: dockerhub-auth
+  params:
+  - name: url
+    value: git@github.com:GoogleCloudPlatform/microservices-demo.git
+  - name: revision
+    value: main
+  - name: image
+    value: docker.io/izeka/cre-labs-microservices-demo-frontend:test
+  - name: Dockerfile
+    value: src/frontend/Dockerfile
+  - name: Context
+    value: src/frontend
