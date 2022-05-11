@@ -14,3 +14,7 @@ spec:
     path: labs/gitops/argocd/apps/payment
     repoURL: https://github.com/rodrmartinez/microservices-demo.git
     targetRevision: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

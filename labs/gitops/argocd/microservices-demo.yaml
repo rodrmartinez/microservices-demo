@@ -12,7 +12,7 @@ spec:
     repoURL: 'https://github.com/rodrmartinez/microservices-demo.git'
     targetRevision: argocd
   project: 'default'
-  # syncPolicy:
-  #   automated:
-  #     prune: true
-  #     selfHeal: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
