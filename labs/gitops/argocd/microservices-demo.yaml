@@ -1,17 +1,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: microservices-demo
+  name: 'microservices-demo'
 spec:
   destination:
-    namespace: default
+    name: ''
+    namespace: 'argocd'
     server: 'https://kubernetes.default.svc'
   source:
-    path: /labs/gitops/argocd/apps/
-    repoURL: https://github.com/rodrmartinez/microservices-demo.git
+    path: 'labs/gitops/argocd/apps/'
+    repoURL: 'https://github.com/rodrmartinez/microservices-demo.git'
     targetRevision: argocd
-  project: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+  project: 'default'
+  # syncPolicy:
+  #   automated:
+  #     prune: true
+  #     selfHeal: true

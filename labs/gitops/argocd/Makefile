@@ -12,6 +12,6 @@ install-argocd:
 	kubectl create namespace argocd &&\
 	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-.PHONY: create-microservices-demo-app
-create-microservices-demo-app:
-	argocd app create microservices-demo --repo https://github.com/rodrmartinez/microservices-demo.git --path release --dest-server https://kubernetes.default.svc --dest-namespace default
+.PHONY: get-admin-password
+get-admin-password:
+	kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
