@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ad
+  name: catalog
   namespace: microservices-demo
   finalizers:
   - resources-finalizer.argocd.argoproj.io
@@ -11,6 +11,6 @@ spec:
     server: https://kubernetes.default.svc
   project: default
   source:
-    path: labs/gitops/argocd/apps/ad
+    path: labs/gitops/argocd/apps/catalog
     repoURL: https://github.com/rodrmartinez/microservices-demo.git
     targetRevision: argocd
