@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: microservices-demo
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: microservices-demo
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: labs/gitops/argocd/apps/frontend
+    repoURL: https://github.com/rodrmartinez/microservices-demo.git
+    targetRevision: argocd
