@@ -1,4 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
- - apps/
+ - ad/ad-service.yaml
+ - cart/cart-service.yaml
+ - catalog/productcatalog-service.yaml
+ - checkout/checkout-service.yaml
+ - currency/currency-service.yaml
+ - email/email-service.yaml
+ - frontend/frontend-service.yaml
+ - loadgenerator/loadgenerator.yaml
+ - payment/payment-service.yaml
+ - recommendation/recommendation-service.yaml
+ - redis/redis-cart.yaml
+ - shipping/shipping-service.yaml
