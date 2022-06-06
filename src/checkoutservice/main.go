@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -25,6 +26,8 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/stats/view"
@@ -41,6 +44,13 @@ import (
 const (
 	listenPort  = "5050"
 	usdCurrency = "USD"
+)
+
+var orderCounter = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "place_order_request_count",
+		Help: "No of place order requests handled by Place Order",
+	},
 )
 
 var log *logrus.Logger
@@ -115,6 +125,10 @@ func main() {
 	healthpb.RegisterHealthServer(srv, svc)
 	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
 	err = srv.Serve(lis)
+	log.Fatal(err)
+
+	http.Handle("/metrics", promhttp.Handler())
+	err = http.ListenAndServe(":2112", nil)
 	log.Fatal(err)
 }
 
@@ -257,6 +271,7 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 		ShippingAddress:    req.Address,
 		Items:              prep.orderItems,
 	}
+	orderCounter.Inc()
 
 	if err := cs.sendOrderConfirmation(ctx, req.Email, orderResult); err != nil {
 		log.Warnf("failed to send order confirmation to %q: %+v", req.Email, err)
