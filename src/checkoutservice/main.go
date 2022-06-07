@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -108,10 +107,10 @@ func main() {
 
 	log.Infof("service config: %+v", svc)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		log.Fatal(err)
-	}
+	// lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	var srv *grpc.Server
 	if os.Getenv("DISABLE_STATS") == "" {
@@ -129,7 +128,7 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("starting to listen on tcp: %q", "2112")
-	err = http.ListenAndServe(":2112", nil)
+	err := http.ListenAndServe(":2112", nil)
 	log.Fatal(err)
 }
 
