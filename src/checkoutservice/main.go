@@ -92,10 +92,10 @@ func main() {
 		log.Info("Profiling disabled.")
 	}
 
-	port := listenPort
-	if os.Getenv("PORT") != "" {
-		port = os.Getenv("PORT")
-	}
+	// // port := listenPort
+	// if os.Getenv("PORT") != "" {
+	// 	port = os.Getenv("PORT")
+	// }
 
 	svc := new(checkoutService)
 	mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
