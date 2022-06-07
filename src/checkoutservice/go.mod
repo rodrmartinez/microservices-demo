@@ -8,6 +8,7 @@ require (
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.10
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.1.2
+	github.com/prometheus/client_golang v1.12.2
 	github.com/sirupsen/logrus v1.8.1
 	go.opencensus.io v0.23.0
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
@@ -33,7 +34,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
-	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect

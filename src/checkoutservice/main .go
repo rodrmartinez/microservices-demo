@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -25,7 +26,6 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
@@ -43,13 +43,6 @@ import (
 const (
 	listenPort  = "5050"
 	usdCurrency = "USD"
-)
-
-var orderCounter = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "place_order_request_count",
-		Help: "No of place order requests handled by Place Order",
-	},
 )
 
 var log *logrus.Logger
@@ -92,10 +85,16 @@ func main() {
 		log.Info("Profiling disabled.")
 	}
 
-	// // port := listenPort
-	// if os.Getenv("PORT") != "" {
-	// 	port = os.Getenv("PORT")
-	// }
+	go func() {
+		log.Infof("starting to listen on tcp: 2112")
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", nil)
+	}()
+
+	port := listenPort
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
 
 	svc := new(checkoutService)
 	mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
@@ -107,10 +106,10 @@ func main() {
 
 	log.Infof("service config: %+v", svc)
 
-	// lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var srv *grpc.Server
 	if os.Getenv("DISABLE_STATS") == "" {
@@ -122,13 +121,8 @@ func main() {
 	}
 	pb.RegisterCheckoutServiceServer(srv, svc)
 	healthpb.RegisterHealthServer(srv, svc)
-	// log.Infof("starting to listen on tcp: %q", lis.Addr().String())
-	// err = srv.Serve(lis)
-	// log.Fatal(err)
-
-	http.Handle("/metrics", promhttp.Handler())
-	log.Infof("starting to listen on tcp: %q", "2112")
-	err := http.ListenAndServe(":2112", nil)
+	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
+	err = srv.Serve(lis)
 	log.Fatal(err)
 }
 
@@ -271,7 +265,6 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 		ShippingAddress:    req.Address,
 		Items:              prep.orderItems,
 	}
-	orderCounter.Inc()
 
 	if err := cs.sendOrderConfirmation(ctx, req.Email, orderResult); err != nil {
 		log.Warnf("failed to send order confirmation to %q: %+v", req.Email, err)
