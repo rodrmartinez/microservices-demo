@@ -26,6 +26,8 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
@@ -46,6 +48,13 @@ const (
 )
 
 var log *logrus.Logger
+
+var (
+	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "processed_orders_total",
+		Help: "The total number of orders processed",
+	})
+)
 
 func init() {
 	log = logrus.New()
@@ -265,6 +274,7 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 		ShippingAddress:    req.Address,
 		Items:              prep.orderItems,
 	}
+	ordersProcessed.Inc()
 
 	if err := cs.sendOrderConfirmation(ctx, req.Email, orderResult); err != nil {
 		log.Warnf("failed to send order confirmation to %q: %+v", req.Email, err)
