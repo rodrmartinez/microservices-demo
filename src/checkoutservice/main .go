@@ -54,9 +54,6 @@ var (
 		Name: "processed_orders_total",
 		Help: "The total number of orders processed",
 	})
-)
-
-var (
 	placeOrdersDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "place_orderes_duration_seconds",
 		Help: "A histogram of the placing Orders durations in seconds.",
