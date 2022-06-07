@@ -128,6 +128,7 @@ func main() {
 	log.Fatal(err)
 
 	http.Handle("/metrics", promhttp.Handler())
+	log.Infof("starting to listen on tcp: %q", "2112")
 	err = http.ListenAndServe(":2112", nil)
 	log.Fatal(err)
 }
