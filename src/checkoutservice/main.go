@@ -123,9 +123,9 @@ func main() {
 	}
 	pb.RegisterCheckoutServiceServer(srv, svc)
 	healthpb.RegisterHealthServer(srv, svc)
-	log.Infof("starting to listen on tcp: %q", lis.Addr().String())
-	err = srv.Serve(lis)
-	log.Fatal(err)
+	// log.Infof("starting to listen on tcp: %q", lis.Addr().String())
+	// err = srv.Serve(lis)
+	// log.Fatal(err)
 
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("starting to listen on tcp: %q", "2112")
