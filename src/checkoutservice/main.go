@@ -16,9 +16,7 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -28,8 +26,6 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
@@ -50,29 +46,6 @@ const (
 )
 
 var log *logrus.Logger
-
-var (
-	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "successful_processed_orders_total",
-		Help: "The total number of orders processed successfully",
-	})
-)
-
-var (
-	FailedOrders = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "failed_processed_orders_total",
-		Help: "The total number of orders processed unsuccessfully",
-	})
-)
-
-var (
-	placeOrdersDurations = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "place_orders_duration_seconds",
-		Help: "A histogram of the placing Orders durations in seconds.",
-		// Bucket   Configuration: first   bucket   Including all in   0.05s   The last one includes all requests completed within 10s.
-		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-	})
-)
 
 func init() {
 	log = logrus.New()
@@ -125,12 +98,12 @@ func main() {
 	}
 
 	svc := new(checkoutService)
-	// mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
-	// mustMapEnv(&svc.productCatalogSvcAddr, "PRODUCT_CATALOG_SERVICE_ADDR")
-	// mustMapEnv(&svc.cartSvcAddr, "CART_SERVICE_ADDR")
-	// mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
-	// mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
-	// mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
+	mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
+	mustMapEnv(&svc.productCatalogSvcAddr, "PRODUCT_CATALOG_SERVICE_ADDR")
+	mustMapEnv(&svc.cartSvcAddr, "CART_SERVICE_ADDR")
+	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
+	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
+	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
 
 	log.Infof("service config: %+v", svc)
 
@@ -252,9 +225,6 @@ func (cs *checkoutService) Watch(req *healthpb.HealthCheckRequest, ws healthpb.H
 }
 
 func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
-	timer := prometheus.NewTimer(placeOrdersDurations)
-	defer timer.ObserveDuration()
-
 	log.Infof("[PlaceOrder] user_id=%q user_currency=%q", req.UserId, req.UserCurrency)
 
 	orderID, err := uuid.NewUUID()
@@ -277,18 +247,9 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	}
 
 	txID, err := cs.chargeCard(ctx, &total, req.CreditCard)
-
-	if rand.Intn(10) == 5 {
-		err = errors.New("simulated error")
-	}
-
 	if err != nil {
-		FailedOrders.Inc()
 		return nil, status.Errorf(codes.Internal, "failed to charge card: %+v", err)
-	} else {
-		ordersProcessed.Inc()
 	}
-
 	log.Infof("payment went through (transaction_id: %s)", txID)
 
 	shippingTrackingID, err := cs.shipOrder(ctx, req.Address, prep.cartItems)
@@ -443,7 +404,6 @@ func (cs *checkoutService) chargeCard(ctx context.Context, amount *pb.Money, pay
 	paymentResp, err := pb.NewPaymentServiceClient(conn).Charge(ctx, &pb.ChargeRequest{
 		Amount:     amount,
 		CreditCard: paymentInfo})
-
 	if err != nil {
 		return "", fmt.Errorf("could not charge the card: %+v", err)
 	}
