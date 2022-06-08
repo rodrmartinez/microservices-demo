@@ -26,6 +26,7 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -52,6 +53,15 @@ var (
 	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "successful_processed_orders_total",
 		Help: "The total number of orders processed successfully",
+	})
+)
+
+var (
+	placeOrdersDurations = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "place_orders_duration_seconds",
+		Help: "A histogram of the placing Orders durations in seconds.",
+		// Bucket   Configuration: first   bucket   Including all in   0.05s   The last one includes all requests completed within 10s.
+		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 	})
 )
 
@@ -233,6 +243,9 @@ func (cs *checkoutService) Watch(req *healthpb.HealthCheckRequest, ws healthpb.H
 }
 
 func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
+	timer := prometheus.NewTimer(placeOrdersDurations)
+	defer timer.ObserveDuration()
+
 	log.Infof("[PlaceOrder] user_id=%q user_currency=%q", req.UserId, req.UserCurrency)
 
 	orderID, err := uuid.NewUUID()
