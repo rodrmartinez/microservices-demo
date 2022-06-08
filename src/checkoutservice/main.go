@@ -57,7 +57,7 @@ var (
 )
 
 var (
-	placeOrdersDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	placeOrdersDurations = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name: "place_orders_duration_seconds",
 		Help: "A histogram of the placing Orders durations in seconds.",
 		// Bucket   Configuration: first   bucket   Including all in   0.05s   The last one includes all requests completed within 10s.
@@ -243,6 +243,8 @@ func (cs *checkoutService) Watch(req *healthpb.HealthCheckRequest, ws healthpb.H
 
 func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (*pb.PlaceOrderResponse, error) {
 	timer := prometheus.NewTimer(placeOrdersDurations)
+	defer timer.ObserveDuration()
+
 	log.Infof("[PlaceOrder] user_id=%q user_currency=%q", req.UserId, req.UserCurrency)
 
 	orderID, err := uuid.NewUUID()
@@ -294,7 +296,6 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 		log.Infof("order confirmation email sent to %q", req.Email)
 	}
 	resp := &pb.PlaceOrderResponse{Order: orderResult}
-	timer.ObserveDuration()
 	return resp, nil
 }
 
