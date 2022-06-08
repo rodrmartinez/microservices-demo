@@ -16,7 +16,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -53,6 +55,13 @@ var (
 	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "successful_processed_orders_total",
 		Help: "The total number of orders processed successfully",
+	})
+)
+
+var (
+	FailedOrders = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "failed_processed_orders_total",
+		Help: "The total number of orders processed unsuccessfully",
 	})
 )
 
@@ -268,7 +277,13 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	}
 
 	txID, err := cs.chargeCard(ctx, &total, req.CreditCard)
+
+	if rand.Intn(10) == 5 {
+		err = errors.New("simulated error")
+	}
+
 	if err != nil {
+		FailedOrders.Inc()
 		return nil, status.Errorf(codes.Internal, "failed to charge card: %+v", err)
 	} else {
 		ordersProcessed.Inc()
