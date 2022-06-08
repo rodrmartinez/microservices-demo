@@ -26,6 +26,7 @@ import (
 	"contrib.go.opencensus.io/exporter/jaeger"
 	"contrib.go.opencensus.io/exporter/stackdriver"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"go.opencensus.io/plugin/ocgrpc"
@@ -46,6 +47,13 @@ const (
 )
 
 var log *logrus.Logger
+
+var (
+	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "successful_processed_orders_total",
+		Help: "The total number of orders processed successfully",
+	})
+)
 
 func init() {
 	log = logrus.New()
@@ -249,7 +257,10 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	txID, err := cs.chargeCard(ctx, &total, req.CreditCard)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to charge card: %+v", err)
+	} else {
+		ordersProcessed.Inc()
 	}
+
 	log.Infof("payment went through (transaction_id: %s)", txID)
 
 	shippingTrackingID, err := cs.shipOrder(ctx, req.Address, prep.cartItems)
