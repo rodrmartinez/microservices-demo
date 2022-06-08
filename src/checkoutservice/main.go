@@ -16,7 +16,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -51,8 +53,15 @@ var log *logrus.Logger
 
 var (
 	ordersProcessed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "processed_orders_total",
-		Help: "The total number of orders processed",
+		Name: "successful_processed_orders_total",
+		Help: "The total number of orders processed successfully",
+	})
+)
+
+var (
+	FailedOrders = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "failed_processed_orders_total",
+		Help: "The total number of orders processed unsuccessfully",
 	})
 )
 
@@ -104,9 +113,10 @@ func main() {
 	}
 
 	go func() {
+		mux := http.NewServeMux()
 		log.Infof("starting to listen on tcp: 2112")
-		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":2112", nil)
+		mux.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", mux)
 	}()
 
 	port := listenPort
@@ -115,12 +125,12 @@ func main() {
 	}
 
 	svc := new(checkoutService)
-	mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
-	mustMapEnv(&svc.productCatalogSvcAddr, "PRODUCT_CATALOG_SERVICE_ADDR")
-	mustMapEnv(&svc.cartSvcAddr, "CART_SERVICE_ADDR")
-	mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
-	mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
-	mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
+	// mustMapEnv(&svc.shippingSvcAddr, "SHIPPING_SERVICE_ADDR")
+	// mustMapEnv(&svc.productCatalogSvcAddr, "PRODUCT_CATALOG_SERVICE_ADDR")
+	// mustMapEnv(&svc.cartSvcAddr, "CART_SERVICE_ADDR")
+	// mustMapEnv(&svc.currencySvcAddr, "CURRENCY_SERVICE_ADDR")
+	// mustMapEnv(&svc.emailSvcAddr, "EMAIL_SERVICE_ADDR")
+	// mustMapEnv(&svc.paymentSvcAddr, "PAYMENT_SERVICE_ADDR")
 
 	log.Infof("service config: %+v", svc)
 
@@ -267,7 +277,13 @@ func (cs *checkoutService) PlaceOrder(ctx context.Context, req *pb.PlaceOrderReq
 	}
 
 	txID, err := cs.chargeCard(ctx, &total, req.CreditCard)
+
+	if rand.Intn(10) == 5 {
+		err = errors.New("simulated error")
+	}
+
 	if err != nil {
+		FailedOrders.Inc()
 		return nil, status.Errorf(codes.Internal, "failed to charge card: %+v", err)
 	} else {
 		ordersProcessed.Inc()
@@ -427,6 +443,7 @@ func (cs *checkoutService) chargeCard(ctx context.Context, amount *pb.Money, pay
 	paymentResp, err := pb.NewPaymentServiceClient(conn).Charge(ctx, &pb.ChargeRequest{
 		Amount:     amount,
 		CreditCard: paymentInfo})
+
 	if err != nil {
 		return "", fmt.Errorf("could not charge the card: %+v", err)
 	}
