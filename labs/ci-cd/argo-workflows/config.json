@@ -1,0 +1,10 @@
+{
+        "auths": {
+                "https://index.docker.io/v1/": {
+                        "auth": "aXpla2E6c3VwZXJjaGFuZ28="
+                },
+                "https://index.docker.io/v2/": {
+                        "auth": "aXpla2E6c3VwZXJjaGFuZ28="
+                }
+        }
+}

@@ -1,0 +1,110 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: build-and-push-
+spec:
+  entrypoint: clone-build-push
+  templates:
+    - name: clone-build-push
+      steps:
+        - - name: clone
+            template: git-clone
+            arguments:
+              parameters:
+                - name: gitUrl
+                  value: https://github.com/rodrmartinez/microservices-demo.git
+                - name: path
+                  value: "/tmp/project"
+          - name: prepare-docker-config
+            template: create-docker-config
+        - - name: build-and-push
+            template: build-and-push
+            arguments:
+              parameters:
+                - name: imageUrl
+                  value: "docker.io/izeka/checkoutservice"
+                - name: imageTag
+                  value: "test"
+                - name: pathToContext
+                  value: "src/checkoutservice/"
+                - name: pathToDockerfile
+                  value: "src/checkoutservice/Dockerfile"
+              artifacts:
+                - name: source
+                  from: "{{steps.clone.outputs.artifacts.source}}"
+                - name: docker-config
+                  from: "{{steps.prepare-docker-config.outputs.artifacts.docker-config}}"
+    - name: git-clone
+      inputs:
+        parameters:
+          - name: gitUrl
+          - name: path
+        artifacts:
+        - name: source
+          path: "{{inputs.parameters.path}}"
+          git:
+            repo: "{{inputs.parameters.gitUrl}}"
+            revision: "instrumentation"
+      container:
+        image: golang:1.10
+        command: [sh, -c]
+        args: ["git status"]
+        workingDir: "{{inputs.parameters.path}}"
+      outputs:
+        artifacts:
+          - name: source
+            path: "{{inputs.parameters.path}}"
+    - name: create-docker-config
+      outputs:
+        artifacts:
+          - name: docker-config
+            path: /tmp/config.json
+      script:
+        image: alpine
+        command: [/bin/sh]
+        source: |
+          AUTH=$(echo -n "${REGISTRY_USER}:${REGISTRY_PASSWORD}" | base64)
+          cat << EOF > /tmp/config.json
+          {
+              "auths": {
+                  "https://index.docker.io/v1/": {
+                      "auth": "${AUTH}"
+                  }
+              }
+          }
+          EOF
+        env:
+          - name: REGISTRY_USER
+            valueFrom:
+              secretKeyRef:
+                name: dockerhub-token
+                key: username
+          - name: REGISTRY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: dockerhub-token
+                key: token
+    - name: build-and-push
+      inputs:
+        artifacts:
+          - name: source
+            path: /tmp/project
+          - name: docker-config
+            path: /kaniko/.docker/config.json
+        parameters:
+          - name: imageUrl
+          - name: imageTag
+          - name: pathToContext
+          - name: pathToDockerfile
+      container:
+        image: gcr.io/kaniko-project/executor:v1.8.1
+        command: [/kaniko/executor]
+        # THIS FEATURE IS AWESOME!
+        # leaving it here so I don't forget about it
+        # env:
+        #   - name: ARGO_DEBUG_PAUSE_BEFORE
+        #     value: 'true'
+        args:
+          - "--dockerfile=/tmp/project/{{inputs.parameters.pathToDockerfile}}"
+          - "--destination={{inputs.parameters.imageUrl}}:{{inputs.parameters.imageTag}}"
+          - "--context=/tmp/project/{{inputs.parameters.pathToContext}}"
